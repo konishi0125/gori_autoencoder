@@ -93,12 +93,10 @@ def model_train(train, test):
 def main():
     # npyファイルの読み込み
     in_npy = "gen_fig.npy"
-    # 出力するモデル名を指定
-    out_model = "gori_model_15.h5"
     # gen_data.pyで生成したRGB形式の画像データを読み込む
     data = np.load(f"./{in_npy}")
-    # 正規化を行う(最大値:256で割って0〜1に収束)
-    data = data / 256
+    # 正規化を行う(最大値:255で割って0〜1に収束)
+    data = data / 255
     
     train, test = train_test_split(data, test_size=0.2)
     # 学習の実行
