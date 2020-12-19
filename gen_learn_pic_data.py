@@ -3,17 +3,18 @@ import cv2
 from PIL import Image, ImageOps, ImageFilter
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
-#cv2からPIL型に変換
-def convert_cv2pil(image_cv):
-    image_pil = Image.fromarray(image_cv)
-    image_pil = image_pil.convert('RGB')
-    return image_pil
+IMG_SIZE=64
 
 # 学習用の配列に追加
 def append_data(img, out):
+    img = img.convert("L")
+    img = img.resize((IMG_SIZE, IMG_SIZE))
     #img = convert_cv2pil(img)
     data = np.asarray(img)
+    #グレースケール化で減った次元を合わせる
+    data = data.reshape((IMG_SIZE, IMG_SIZE, 1))
     out.append(data)
     return out
 
@@ -59,34 +60,37 @@ def inflate_by_mosaic(img, out, mosaic_strength):
     for ms in mosaic_strength:
         add_img = img.filter(ImageFilter.GaussianBlur(ms))
         out = append_data(add_img, out)
-        plt.imshow(add_img)
-        plt.show()
     return out
 
+def main():
+    oklist = np.loadtxt("./ok.csv", delimiter=",", dtype="str")
+    #oklist = oklist[:5,:]
+    out_npy = 'gen_fig.npy'
 
+    out = []
 
+    for i in tqdm(range(len(oklist))):
+        # 画像の読み込み
+        img = read_pic_used_by_oklist(oklist, "./../gori/ok", i)
+        if(img is None):
+            print('画像が読み込めません')
+            continue
 
-oklist = np.loadtxt("./ok.csv", delimiter=",", dtype="str")
-oklist = oklist[:2,:]
-out_npy = 'gori_rgb.npy'
-
-image_size = 60
-
-out = []
-
-for i in range(len(oklist)):
-    # 画像の読み込み
-    img = read_pic_used_by_oklist(oklist, "./../gori/ok", i)
-    if(img is None):
-        print('画像が読み込めません')
-        continue
-    # リサイズ
-    #image = cv2.resize(image, (image_size, image_size))
-    
-    out = inflate_by_rotate(img, out, 7)
-    out = inflate_by_flip(img, out)
-    out = inflate_by_mirror(img, out)
-    out = inflate_by_mosaic(img, out, [1,2])
+        #画像の水増し
+        out = append_data(img, out)
+        out = inflate_by_rotate(img, out, 7)
+        out = inflate_by_flip(img, out)
+        out = inflate_by_mirror(img, out)
+        #元画像の解像度でぼかしをするかどうか分岐
+        if(min(img.size[0], img.size[1])<100):
+            out = inflate_by_mosaic(img, out, [1])
+        elif(min(img.size[0], img.size[1])>100, min(img.size[0], img.size[1])<200):
+            out = inflate_by_mosaic(img, out, [1,2])
+        else:
+            out = inflate_by_mosaic(img, out, [1,2,3])
             
-out = np.array(out)
-np.save("./" + out_npy, out)
+    out = np.array(out)
+    np.save("./" + out_npy, out)
+
+if __name__ == "__main__":
+    main()
